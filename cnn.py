@@ -19,6 +19,8 @@ import csv
 import os
 
 
+img_size = (32, 32)
+
 # ## Download the dataset
 
 # In[2]:
@@ -55,8 +57,9 @@ def readTrafficSigns(rootpath):
         # loop over all images in current annotations file
         for row in gtReader:
             img = Image.open(prefix + row[0]) # the 1th column is the filename
-            img_resized = img.resize((128, 128), Image.ANTIALIAS)
-            images.append(np.array(img_resized.getdata()).reshape(128, 128, 3))
+            img_resized = img.resize((img_size[0], img_size[1]), Image.ANTIALIAS)
+            #img_resized = img.convert('YUV')
+            images.append(np.array(img_resized.getdata(), dtype=np.float32).reshape(img_size[0], img_size[1], 3))
             del img, img_resized
             labels.append(row[7]) # the 8th column is the label
         gtFile.close()
@@ -90,54 +93,31 @@ print "Largest Image Dimensions: " + str(maxShape)
 # In[64]:
 
 permutation = np.random.permutation(len(trainImg))
-trainImg_per = [trainImg[idx] for idx in permutation]
+train_set = np.array([trainImg[idx] for idx in permutation], dtype=np.float32)
+
 trainLabels_per = [trainLabels[idx] for idx in permutation]
+number_of_classes = 43
+train_labels = []
+for label in trainLabels_per:
+    new_label = np.zeros(number_of_classes)
+    new_label[int(label)] = 1
+    train_labels.append(new_label)
+train_labels = np.array(train_labels, dtype=np.float32)
 
-
-# ## Make all images the same size
-# For a convolutional Neural Network to work, the images all need to have the same size.
-# This can be done by padding with black pixels. Then, all of the images are of the size of the largest image.
-# 
-# However, this approach may have drawbacks when it comes to the learning.
-
-# In[65]:
-
-maxShape = (256, 256, 3)
-train_set = []
-count = 0
-for img in trainImg_per[:20000]:
-    padded = np.zeros(maxShape)
-    x1 = int(padded.shape[0] / 2. - img.shape[0] / 2.)
-    y1 = int(padded.shape[1] / 2. - img.shape[1] / 2.)
-    padded[x1:img.shape[0]+x1, y1:img.shape[1]+y1] = img
-    train_set.append(padded)
-    if count % 500 == 0:
-        print "Done with " + str(count) + " images"
-    count += 1
-train_set = np.array(train_set, dtype=np.float32)
+# rescale images to be between 0 and 1, not 0 and 255
+print "Rescaling..."
+train_set = train_set / 255.
+print "Rescaled images to have values between 0 and 1"
 print train_set.shape
+print train_labels.shape
 
-
-# In[66]:
-
-len(train_set)
-for img in train_set:
-    if not img.shape == maxShape:
-        print "ERROR"
-
+print train_set[1520]
 
 # ## Transform labels to one-hot-vectors
 
 # In[67]:
 
-number_of_classes = 43
-train_labels = []
-for label in trainLabels_per[:20000]:
-    new_label = np.zeros(number_of_classes)
-    new_label[int(label)] = 1
-    train_labels.append(new_label)
-train_labels = np.array(train_labels, dtype=np.float32)
-print train_labels[9]
+
 
 
 """
@@ -235,12 +215,12 @@ class cNN:
     def construct_model(self, images, labels, keep_prob):
         
         # some network properties
-        n_kernels_c1 = 50
-        n_kernels_c2 = 64
+        n_kernels_c1 = 200
+        n_kernels_c2 = 150
         n_neurons_d1 = 1024
-        pool_factor_1 = 2
-        pool_factor_2 = 4
-        
+        pool_factor_1 = 4
+        pool_factor_2 = 2
+
         # create variables for layer one
         W_conv1 = self.weight_variable([kernel_shape[0], kernel_shape[1], self.img_shape[2], n_kernels_c1])
         b_conv1 = self.bias_variable([n_kernels_c1])
@@ -276,12 +256,12 @@ class cNN:
         y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
         # add cross entropy as objective function
-        cross_entropy = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(y_conv), reduction_indices=[1]))
-        train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(cross_entropy)
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y_conv, labels))
+        train_step = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
         correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(labels, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-        return (train_step, cross_entropy, accuracy)
+        return (train_step, loss, accuracy)
 
     def train_model(self, images, labels):
         
@@ -307,7 +287,7 @@ class cNN:
         self.accuracies = []
         with tf.Session() as sess:
             sess.run(tf.initialize_all_variables())
-            for epoch in range(10):
+            for epoch in range(300):
                 for batchIdx in range(batch_runs):
                     sess.run(train_op, feed_dict={x: images[batchIdx*batch_size:(batchIdx+1)*batch_size],
                                                   y: labels[batchIdx*batch_size:(batchIdx+1)*batch_size],
@@ -332,6 +312,6 @@ architecture = [("conv", 32), ("conv", 64), ("dense", 1024), ("out", 43)]
 img_shape = train_set[0].shape
 print maxShape
 kernel_shape = (5, 5)
-learning_rate = 0.0001
+learning_rate = 0.00001
 classifier = cNN(architecture, img_shape, kernel_shape, learning_rate)
 classifier.train_model(train_set, train_labels)
