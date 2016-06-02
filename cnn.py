@@ -57,9 +57,13 @@ def readTrafficSigns(rootpath):
         # loop over all images in current annotations file
         for row in gtReader:
             img = Image.open(prefix + row[0]) # the 1th column is the filename
-            img_resized = img.resize((img_size[0], img_size[1]), Image.ANTIALIAS)
-            #img_resized = img.convert('YUV')
-            images.append(np.array(img_resized.getdata(), dtype=np.float32).reshape(img_size[0], img_size[1], 3))
+            img_resized = img.resize((img_size[0], img_size[1]), Image.LINEAR)
+            #print np.array(img_resized).shape
+            img_resized = img_resized.convert('YCbCr')
+            Y_channel = img_resized.split()[0]
+            #print np.array(Y_channel).shape
+            #images.append(np.array(Y_channel))
+            images.append(np.array(Y_channel.getdata(), dtype=np.float32).reshape(img_size[0], img_size[1], 1))
             del img, img_resized
             labels.append(row[7]) # the 8th column is the label
         gtFile.close()
