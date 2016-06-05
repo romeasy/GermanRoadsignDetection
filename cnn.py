@@ -215,7 +215,7 @@ class cNN:
                             total_acc_train += sess.run(accuracy_op,
                                                         feed_dict={x: train_images[
                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                   y: test_label[
+                                                                   y: train_label[
                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
                                                                    keep_prob: 1.})
 
