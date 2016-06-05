@@ -195,25 +195,35 @@ class cNN:
                                                   y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
                                                   keep_prob: 1.})
                     
-                    if batchIdx % (batch_runs / 10) == 0:
-                        total_acc = 0.
-                        total_ce = 0.
+                    if batchIdx % (batch_runs / 2) == 0:
+                        total_acc_test = 0.
+                        total_ce_test = 0.
+                        total_acc_train = 0.
                         for test_batch in xrange(test_images.shape[0] / batch_size):
-                            total_acc += sess.run(accuracy_op,
-                                                  feed_dict={x: test_images[
-                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                             y: test_label[
-                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                             keep_prob: 1.})
-                            total_ce += sess.run(ce_op,
-                                                 feed_dict={x: test_images[
-                                                               test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                            y: test_label[
-                                                               test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                            keep_prob: 1.})
-                        acc = total_acc / float(test_images.shape[0] / batch_size)
-                        ce = total_ce / float(test_images.shape[0] / batch_size)
-                        print "[Batch " + str(batchIdx) + "]\tAccuracy: " + str(acc) + "\tCross Entropy: " + str(ce)
+                            total_acc_test += sess.run(accuracy_op,
+                                                       feed_dict={x: test_images[
+                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                  y: test_label[
+                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                  keep_prob: 1.})
+                            total_ce_test += sess.run(ce_op,
+                                                      feed_dict={x: test_images[
+                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                 y: test_label[
+                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                 keep_prob: 1.})
+                            total_acc_train += sess.run(accuracy_op,
+                                                        feed_dict={x: train_images[
+                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                   y: test_label[
+                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                   keep_prob: 1.})
+
+                        acc = total_acc_test / float(test_images.shape[0] / batch_size)
+                        ce = total_ce_test / float(test_images.shape[0] / batch_size)
+                        train_acc = total_acc_train / float(test_images.shape[0] / batch_size)
+                        print "[Batch " + str(batchIdx) + "]\tAccuracy: " + str(acc) + "\tCross Entropy: " + str(ce) +\
+                              "\tTrain Accuracy: " + str(train_acc)
                         self.accuracies.append(acc)
                         
                 print "Epoch " + str(epoch) + " done!"
