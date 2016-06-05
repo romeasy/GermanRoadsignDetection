@@ -1,161 +1,59 @@
 
 # coding: utf-8
+# Author:   Roman Schulte-Sasse
+# Mail:     r.schulte-sasse@fu-berlin.de
+# Date:     5th of june, 2016
 
 # # Training a cNN to detect roadsigns
-# In order to process roadsigns in the autonomous car of the Freie Universität, we want to train a convolutional (deep) neural network.
+# In order to process roadsigns in the autonomous car of the Freie Universität, we want to train a
+# convolutional (deep) neural network.
 # 
-# This network is supposed to distinguish between different classes of signs (stop, attention, train crossing etc) and the final model will then be integrated to the autonomos ROS structure.
-# 
-# This notebook shall download the dataset, read it in and then train the classifier. Afterwards, a validation of the training procedure will be done.
+# This network is supposed to distinguish between different classes of signs (stop, attention, train crossing etc)
+# and the final model will then be integrated to the autonomos ROS structure.
+# This file contains the implementation of the cNN.
+# It can be run locally, though I recommend using a nice and fast GPU for that.
+#
+# Cuda and CuDNN should be available for efficient GPU training with tensorflow.
+#
+# Note further that this code relies on the data that is preprocessed by a notebook called 'preprocessing.ipynb'
 
-# In[1]:
 
 import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image
-import urllib2, cStringIO, zipfile
-import csv
-import os
+# import numpy as np
+import pickle
+# import matplotlib.pyplot as plt
 
 
-img_size = (32, 32)
-
-# ## Download the dataset
-
-# In[2]:
-
-url = 'http://benchmark.ini.rub.de/Dataset/GTSRB_Final_Training_Images.zip'
-
-if not os.path.exists('GTSRB/Final_Training/Images'):
-    try:
-        remotezip = urllib2.urlopen(url)
-        zipinmemory = cStringIO.StringIO(remotezip.read())
-        zip = zipfile.ZipFile(zipinmemory)
-        zip.extractall('.')
-    except urllib2.HTTPError:
-        pass
-
-
-# ## Read the data in
-
-# In[3]:
-
-def readTrafficSigns(rootpath):
-    '''Reads traffic sign data for German Traffic Sign Recognition Benchmark.
-
-    Arguments: path to the traffic sign data, for example './GTSRB/Training'
-    Returns:   list of images, list of corresponding labels'''
-    images = [] # images
-    labels = [] # corresponding labels
-    # loop over all 42 classes
-    for c in range(0,43): #43
-        prefix = rootpath + '/' + format(c, '05d') + '/' # subdirectory for class
-        gtFile = open(prefix + 'GT-'+ format(c, '05d') + '.csv') # annotations file
-        gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
-        gtReader.next() # skip header
-        # loop over all images in current annotations file
-        for row in gtReader:
-            img = Image.open(prefix + row[0]) # the 1th column is the filename
-            img_resized = img.resize((img_size[0], img_size[1]), Image.LINEAR)
-            #print np.array(img_resized).shape
-            img_resized = img_resized.convert('YCbCr')
-            Y_channel = img_resized.split()[0]
-            #print np.array(Y_channel).shape
-            #images.append(np.array(Y_channel))
-            images.append(np.array(Y_channel.getdata(), dtype=np.float32).reshape(img_size[0], img_size[1], 1))
-            del img, img_resized
-            labels.append(row[7]) # the 8th column is the label
-        gtFile.close()
-        print "Loaded images from class " + str(c)
-    return images, labels
-
-# In[4]:
-print "Loading the data..."
-trainImg, trainLabels = readTrafficSigns('GTSRB/Final_Training/Images')
-print "Successfully loaded " + str(len(trainImg)) + " images!"
-
-# ## Print some information on the data
-
-# In[63]:
-
-print "Number of training images: " + str(len(trainImg))
-print "Number of training labels: " + str(len(trainLabels))
-maxShape = (0,0)
-maxPos = 0
-pos = 0
-for img in trainImg:
-    if np.prod(img.shape) > np.prod(maxShape):
-        maxShape = img.shape
-        maxPos = pos
-    pos += 1
-print "Largest Image Dimensions: " + str(maxShape)
-
-
-# ## Permute the training data randomly (and subset for testing)
-
-# In[64]:
-
-permutation = np.random.permutation(len(trainImg))
-train_set = np.array([trainImg[idx] for idx in permutation], dtype=np.float32)
-
-trainLabels_per = [trainLabels[idx] for idx in permutation]
-number_of_classes = 43
-train_labels = []
-for label in trainLabels_per:
-    new_label = np.zeros(number_of_classes)
-    new_label[int(label)] = 1
-    train_labels.append(new_label)
-train_labels = np.array(train_labels, dtype=np.float32)
-
-# rescale images to be between 0 and 1, not 0 and 255
-print "Rescaling..."
-train_set = train_set / 255.
-print "Rescaled images to have values between 0 and 1"
-print train_set.shape
-print train_labels.shape
-
-print train_set[1520]
-
-# ## Transform labels to one-hot-vectors
-
-# In[67]:
-
-
-
-
-"""
-This class implements a convolutional neural network classifier.
-Main usage should consist of two steps, namely train and evaluate. During training, the weights of the network
-will be changed in a way to nicely represent the data and classify it in the end.
-
-Parameters:
-    img_shape:
-        Shape of the images that will be presented to the
-        network as (width, height, #channels)
-    
-    learning_rate:
-        The learning rate used for gradient descent
-    
-    architecture:
-        List. It contains for each layer the number
-        of neurons. For the convolution, the number
-        of neurons corresponds to the number of kernels.
-"""
 class cNN:
-    
-    def __init__(self, architecture, img_shape=(28,28), kernel_shape=(5,5), learning_rate=0.001):
+    """
+    This class implements a convolutional neural network classifier.
+    Main usage should consist of two steps, namely train and evaluate. During training, the weights of the network
+    will be changed in a way to nicely represent the data and classify it in the end.
+
+    Parameters:
+        img_shape:
+            Shape of the images that will be presented to the
+            network as (width, height, #channels)
+
+        learning_rate:
+            The learning rate used for gradient descent
+
+        architecture:
+            List. It contains for each layer the number
+            of neurons. For the convolution, the number
+            of neurons corresponds to the number of kernels.
+    """
+    def __init__(self, _architecture, _img_shape=(28, 28), _kernel_shape=(5, 5), _learning_rate=0.001):
         if len(architecture) > 5:
             print "ERROR. The network is too deep. So far, we can't deal with more than 5 layers!"
-        self.learning_rate = learning_rate
-        self.architecture = architecture
-        self.kernel_shape = kernel_shape
+        self.learning_rate = _learning_rate
+        self.architecture = _architecture
+        self.kernel_shape = _kernel_shape
         
         # some variables which are set by the training function
-        self.img_shape = img_shape #(x, y, channels)
+        self.img_shape = _img_shape  # (x, y, channels)
         self.n_classes = 10
-        
-    
+
     """
     This function generates lists of weight matrices and bias matrices from
     some given architecture.
@@ -166,13 +64,13 @@ class cNN:
         biases = []
         for layer in xrange(self.architecture):
             if self.architecture[layer][0] == "conv":
-                if layer == 0: # first layer
+                if layer == 0:  # first layer
                     last_output = img_shape[2]
                 else:
                     last_output = self.architecture[layer-1][1]
                 weights.append(tf.Variable(tf.random_normal([self.kernel_shape[0],
                                                             self.kernel_shape[1],
-                                                            img_shape[2],
+                                                            last_output,
                                                             self.architecture[layer][1]]
                                                            )))
                 biases.append(tf.Variable(tf.random_normal([self.architecture[layer][1]])))
@@ -265,17 +163,17 @@ class cNN:
         correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(labels, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-        return (train_step, loss, accuracy)
+        return train_step, loss, accuracy
 
-    def train_model(self, images, labels):
+    def train_model(self, train_images, train_label, test_images, test_label):
         
-        print images.shape
-        assert(images.shape[0] == labels.shape[0])
+        print train_images.shape
+        assert(train_images.shape[0] == train_label.shape[0])
         
         # set some class variables before constructing the model
-        self.n_classes = labels.shape[1]
-        self.img_shape = images[0].shape
-        train_size = images.shape[0]
+        self.n_classes = train_label.shape[1]
+        self.img_shape = train_images[0].shape
+        train_size = train_images.shape[0]
         batch_size = 5
         batch_runs = train_size / batch_size
         print "Batch size: " + str(batch_size)
@@ -284,7 +182,7 @@ class cNN:
         # create the graph
         x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
         y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
-        keep_prob = tf.placeholder(tf.float32) #dropout (keep probability)
+        keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
         train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
         print "Graph successfully constructed! Start training..."
         
@@ -293,29 +191,45 @@ class cNN:
             sess.run(tf.initialize_all_variables())
             for epoch in range(300):
                 for batchIdx in range(batch_runs):
-                    sess.run(train_op, feed_dict={x: images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                  y: labels[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                    sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                                                  y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
                                                   keep_prob: 1.})
                     
                     if batchIdx % (batch_runs / 10) == 0:
-                        acc = sess.run(accuracy_op, feed_dict={x: images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                               y: labels[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                               keep_prob: 1.})
-                        ce = sess.run(ce_op, feed_dict={x: images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                        y: labels[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                        keep_prob: 1.})
+                        total_acc = 0.
+                        total_ce = 0.
+                        for test_batch in xrange(test_images.shape[0] / batch_size):
+                            total_acc += sess.run(accuracy_op,
+                                                  feed_dict={x: test_images[
+                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                             y: test_label[
+                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                             keep_prob: 1.})
+                            total_ce += sess.run(ce_op,
+                                                 feed_dict={x: test_images[
+                                                               test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                            y: test_label[
+                                                               test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                            keep_prob: 1.})
+                        acc = total_acc / float(test_images.shape[0] / batch_size)
+                        ce = total_ce / float(test_images.shape[0] / batch_size)
                         print "[Batch " + str(batchIdx) + "]\tAccuracy: " + str(acc) + "\tCross Entropy: " + str(ce)
                         self.accuracies.append(acc)
                         
                 print "Epoch " + str(epoch) + " done!"
 
 
-# In[70]:
+print "Loading the data..."
+with open('train_data.pkl', 'rb') as train_handle:
+    train_set, train_labels = pickle.load(train_handle)
+with open('test_data.pkl', 'rb') as test_handle:
+    test_set, test_labels = pickle.load(test_handle)
+print "Successfully loaded " + str(train_set.shape[0]) + " images!"
 
 architecture = [("conv", 32), ("conv", 64), ("dense", 1024), ("out", 43)]
 img_shape = train_set[0].shape
-print maxShape
+print "Images have shape: " + str(img_shape)
 kernel_shape = (5, 5)
 learning_rate = 0.00001
 classifier = cNN(architecture, img_shape, kernel_shape, learning_rate)
-classifier.train_model(train_set, train_labels)
+classifier.train_model(train_set, train_labels, test_set, test_labels)
