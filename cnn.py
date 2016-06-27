@@ -19,10 +19,9 @@
 
 
 import tensorflow as tf
-# import numpy as np
 import pickle
-# import matplotlib.pyplot as plt
-
+import time
+from datetime import datetime
 
 class cNN:
     """
@@ -117,9 +116,9 @@ class cNN:
     def construct_model(self, images, labels, keep_prob):
         
         # some network properties
-        n_kernels_c1 = 200
-        n_kernels_c2 = 150
-        n_neurons_d1 = 1024
+        n_kernels_c1 = 108
+        n_kernels_c2 = 50
+        n_neurons_d1 = 64
         pool_factor_1 = 4
         pool_factor_2 = 2
 
@@ -167,72 +166,81 @@ class cNN:
 
     def train_model(self, train_images, train_label, test_images, test_label):
         
-        print train_images.shape
-        assert(train_images.shape[0] == train_label.shape[0])
-        
-        # set some class variables before constructing the model
-        self.n_classes = train_label.shape[1]
-        self.img_shape = train_images[0].shape
-        train_size = train_images.shape[0]
-        batch_size = 5
-        batch_runs = train_size / batch_size
-        print "Batch size: " + str(batch_size)
-        print "Number of iterations per epoch: " + str(batch_runs)
+        with tf.device('/gpu:1'):
+            print train_images.shape
+            assert(train_images.shape[0] == train_label.shape[0])
+            
+            # set some class variables before constructing the model
+            self.n_classes = train_label.shape[1]
+            self.img_shape = train_images[0].shape
+            train_size = train_images.shape[0]
+            batch_size = 20
+            batch_runs = train_size / batch_size
+            print "Batch size: " + str(batch_size)
+            print "Number of iterations per epoch: " + str(batch_runs)
 
-        # create the graph
-        x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
-        y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
-        keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
-        train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
-        print "Graph successfully constructed! Start training..."
-        
-        self.accuracies = []
-        with tf.Session() as sess:
-            sess.run(tf.initialize_all_variables())
-            for epoch in range(300):
-                for batchIdx in range(batch_runs):
-                    sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                  y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                  keep_prob: 1.})
-                    
-                    if batchIdx % (batch_runs / 2) == 0:
-                        total_acc_test = 0.
-                        total_ce_test = 0.
-                        total_acc_train = 0.
-                        for test_batch in xrange(test_images.shape[0] / batch_size):
-                            total_acc_test += sess.run(accuracy_op,
-                                                       feed_dict={x: test_images[
-                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                  y: test_label[
-                                                                     test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                  keep_prob: 1.})
-                            total_ce_test += sess.run(ce_op,
-                                                      feed_dict={x: test_images[
-                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                 y: test_label[
-                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                 keep_prob: 1.})
-                            total_acc_train += sess.run(accuracy_op,
-                                                        feed_dict={x: train_images[
-                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                   y: train_label[
-                                                                    test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                   keep_prob: 1.})
-
-                        acc = total_acc_test / float(test_images.shape[0] / batch_size)
-                        ce = total_ce_test / float(test_images.shape[0] / batch_size)
-                        train_acc = total_acc_train / float(test_images.shape[0] / batch_size)
-                        print "[Batch " + str(batchIdx) + "]\tAccuracy: " + str(acc) + "\tCross Entropy: " + str(ce) +\
-                              "\tTrain Accuracy: " + str(train_acc)
-                        self.accuracies.append(acc)
+            # create the graph
+            x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
+            y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
+            keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
+            train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
+            print "Graph successfully constructed! Start training..."
+            
+            accuracies_test = []
+            accuracies_train = []
+            cross_entropy_test = []
+            with tf.Session() as sess:
+                sess.run(tf.initialize_all_variables())
+                for epoch in range(300):
+                    for batchIdx in range(batch_runs):
+                        sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                                                      y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                                                      keep_prob: 1.})
                         
-                print "Epoch " + str(epoch) + " done!"
+                        if batchIdx % (batch_runs / 2) == 0:  # the denominator determines the printing frequency (here twice every epoch)
+                            total_acc_test = 0.
+                            total_ce_test = 0.
+                            total_acc_train = 0.
+                            for test_batch in xrange(test_images.shape[0] / batch_size):
+                                total_acc_test += sess.run(accuracy_op,
+                                                           feed_dict={x: test_images[
+                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                      y: test_label[
+                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                      keep_prob: 1.})
+                                total_ce_test += sess.run(ce_op,
+                                                          feed_dict={x: test_images[
+                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                     y: test_label[
+                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                     keep_prob: 1.})
+                            for train_batch in xrange(train_images.shape[0] / batch_size):
+                                total_acc_train += sess.run(accuracy_op,
+                                                            feed_dict={x: train_images[
+                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
+                                                                       y: train_label[
+                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
+                                                                       keep_prob: 1.})
 
+                            acc = total_acc_test / float(test_images.shape[0] / batch_size)
+                            ce = total_ce_test / float(test_images.shape[0] / batch_size)
+                            train_acc = total_acc_train / float(train_images.shape[0] / batch_size)
+                            print "[Batch " + str(batchIdx) + "]\tAccuracy[Test]: " + str(acc) + "\tCross Entropy[Test]: " + str(ce) +\
+                                  "\tAccuracy[Train]: " + str(train_acc)
+                            accuracies_test.append(acc)
+                            accuracies_train.append(train_acc)
+                            cross_entropy_test.append(ce)
+                            
+                    print "Epoch " + str(epoch) + " done!"
+            print "Save model..."
+            date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            with open(date_string + '_accuracies.pkl', 'w') as f:
+                pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
 
 print "Loading the data..."
-with open('train_data.pkl', 'rb') as train_handle:
+with open('train_data_yuv.pkl', 'rb') as train_handle:
     train_set, train_labels = pickle.load(train_handle)
-with open('test_data.pkl', 'rb') as test_handle:
+with open('test_data_yuv.pkl', 'rb') as test_handle:
     test_set, test_labels = pickle.load(test_handle)
 print "Successfully loaded " + str(train_set.shape[0]) + " images!"
 
