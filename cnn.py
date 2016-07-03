@@ -52,7 +52,7 @@ class cNN:
         
         # some variables which are set by the training function
         self.img_shape = _img_shape  # (x, y, channels)
-        self.n_classes = 10
+        self.n_classes = 43
 
     """
     This function generates lists of weight matrices and bias matrices from
