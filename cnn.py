@@ -22,6 +22,7 @@ import tensorflow as tf
 import pickle
 import time
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 class cNN:
     """
@@ -185,7 +186,7 @@ class cNN:
 
     def train_model(self, train_images, train_label, test_images, test_label):
         
-        with tf.device('/gpu:1'):
+        with tf.device('/gpu:0'):
 		    print train_images.shape
 		    assert(train_images.shape[0] == train_label.shape[0])
 		    
@@ -249,12 +250,19 @@ class cNN:
 		                    accuracies_test.append(acc)
 		                    accuracies_train.append(train_acc)
 		                    cross_entropy_test.append(ce)
-		                    
 		            print "Epoch " + str(epoch) + " done!"
-		    print "Save model..."
-		    date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-		    with open(date_string + '_accuracies.pkl', 'w') as f:
-		        pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
+
+		print "Save model..."
+		date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+		with open(date_string + '_accuracies.pkl', 'w') as f:
+			pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
+		
+		print "Plot accuracy..."
+		fig = plt.figure(figsize=(14,8))
+		plt.plot(accuracies_test, color='green', label='Accuracy on the test set')
+		plt.plot(accuracies_train, color='red', label='Accuracy on the training set')
+		plt.legend(loc="lower right")
+		fig.savefig(date_string + '_plot.png', dpi=400)
 
 print "Loading the data..."
 with open('train_data_norm.pkl', 'rb') as train_handle:
@@ -270,3 +278,4 @@ kernel_shape = (5, 5)
 learning_rate = 0.00001
 classifier = cNN(architecture, img_shape, kernel_shape, learning_rate)
 classifier.train_model(train_set, train_labels, test_set, test_labels)
+print "Done with training!"
