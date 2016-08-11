@@ -23,6 +23,23 @@ import pickle
 import time
 from datetime import datetime
 
+
+class NN_Layer:
+    def __init__(self, num_of_units):
+        self.num_of_units = num_of_units
+        
+    def get_training_function(input_vars, additional_input = None):
+        return input_vars
+
+class Pooling_Layer (NN_Layer):
+    def __init__(self, num_of_units, pooling_factor):
+        self.num_of_units = num_of_units
+        self.pooling_factor = pooling_factor
+
+class Dense_Layer (NN_Layer):
+    def __init__(self, num_of_units):
+        self.num_of_units = num_of_units
+
 class cNN:
     """
     This class implements a convolutional neural network classifier.

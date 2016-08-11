@@ -23,6 +23,7 @@ import pickle
 import time
 from datetime import datetime
 import matplotlib.pyplot as plt
+import os
 
 class cNN:
     """
@@ -91,13 +92,13 @@ class cNN:
                 print "Unknown layer type! " + self.architecture[layer][0]
         return weights, biases
                 
-    def weight_variable(self, shape):
+    def weight_variable(self, shape, name):
         initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.Variable(initial)
+        return tf.Variable(initial, name=name)
 
-    def bias_variable(self, shape):
+    def bias_variable(self, shape, name):
         initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
+        return tf.Variable(initial, name=name)
 
     def conv2d(self, x, W):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
@@ -143,8 +144,8 @@ class cNN:
         pool_factor_2 = 2
 
         # create variables for layer one
-        W_conv1 = self.weight_variable([kernel_shape[0], kernel_shape[1], self.img_shape[2], n_kernels_c1])
-        b_conv1 = self.bias_variable([n_kernels_c1])
+        W_conv1 = self.weight_variable([kernel_shape[0], kernel_shape[1], self.img_shape[2], n_kernels_c1], "kernels_layer1")
+        b_conv1 = self.bias_variable([n_kernels_c1], "biases_layer1")
         
         # do convolution
         # and max pooling for layer one
@@ -152,8 +153,8 @@ class cNN:
         h_pool1 = self.max_pool_2x2(h_conv1, k=pool_factor_1)
 
         # initialize vars for layer two
-        W_conv2 = self.weight_variable([kernel_shape[0], kernel_shape[1], n_kernels_c1, n_kernels_c2])
-        b_conv2 = self.bias_variable([n_kernels_c2])
+        W_conv2 = self.weight_variable([kernel_shape[0], kernel_shape[1], n_kernels_c1, n_kernels_c2], "kernels_layer2")
+        b_conv2 = self.bias_variable([n_kernels_c2], "biases_layer2")
 
         # convolve and max pool layer 2
         h_conv2 = tf.nn.relu(self.conv2d(h_pool1, W_conv2) + b_conv2)
@@ -163,8 +164,8 @@ class cNN:
         reduced_img_w = self.img_shape[0] / (pool_factor_1*pool_factor_2)
         reduced_img_h = self.img_shape[1] / (pool_factor_1*pool_factor_2)
         
-        W_fc1 = self.weight_variable([reduced_img_w * reduced_img_h * n_kernels_c2, n_neurons_d1])
-        b_fc1 = self.bias_variable([n_neurons_d1])
+        W_fc1 = self.weight_variable([reduced_img_w * reduced_img_h * n_kernels_c2, n_neurons_d1], "weights_dense_layer3")
+        b_fc1 = self.bias_variable([n_neurons_d1], "biases_dense_layer3")
         h_pool2_flat = tf.reshape(h_pool2, [-1, reduced_img_w*reduced_img_h*n_kernels_c2])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
@@ -172,8 +173,8 @@ class cNN:
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
         
         # out_layer
-        W_fc2 = self.weight_variable([n_neurons_d1, self.n_classes])
-        b_fc2 = self.bias_variable([self.n_classes])
+        W_fc2 = self.weight_variable([n_neurons_d1, self.n_classes], "weights_out_layer4")
+        b_fc2 = self.bias_variable([self.n_classes], "biases_out_layer4")
         y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
         # add cross entropy as objective function
@@ -185,84 +186,107 @@ class cNN:
         return train_step, loss, accuracy
 
     def train_model(self, train_images, train_label, test_images, test_label):
-        
-        with tf.device('/gpu:0'):
-            print train_images.shape
-            assert(train_images.shape[0] == train_label.shape[0])
-            
-            # set some class variables before constructing the model
-            self.n_classes = train_label.shape[1]
-            self.img_shape = train_images[0].shape
-            train_size = train_images.shape[0]
-            batch_size = 20
-            batch_runs = train_size / batch_size
-            print "Batch size: " + str(batch_size)
-            print "Number of iterations per epoch: " + str(batch_runs)
 
-            # create the graph
-            x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
-            y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
-            keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
-            train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
-            print "Graph successfully constructed! Start training..."
-            
-            accuracies_test = []
-            accuracies_train = []
-            cross_entropy_test = []
-            with tf.Session() as sess:
-                sess.run(tf.initialize_all_variables())
-                for epoch in range(300):
-                    for batchIdx in range(batch_runs):
-                        sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                      y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
-                                                      keep_prob: .5})
-                        
-                        if batchIdx % (batch_runs / 2) == 0:  # the denominator determines the printing frequency (here twice every epoch)
-                            total_acc_test = 0.
-                            total_ce_test = 0.
-                            total_acc_train = 0.
-                            for test_batch in xrange(test_images.shape[0] / batch_size):
-                                total_acc_test += sess.run(accuracy_op,
-                                                           feed_dict={x: test_images[
-                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                      y: test_label[
-                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                      keep_prob: 1.})
-                                total_ce_test += sess.run(ce_op,
-                                                          feed_dict={x: test_images[
-                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                     y: test_label[
-                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
-                                                                     keep_prob: 1.})
-                            for train_batch in xrange(train_images.shape[0] / batch_size):
-                                total_acc_train += sess.run(accuracy_op,
-                                                            feed_dict={x: train_images[
-                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
-                                                                       y: train_label[
-                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
-                                                                       keep_prob: 1.})
+	print train_images.shape
+	assert(train_images.shape[0] == train_label.shape[0])
+	
+	# set some class variables before constructing the model
+	self.n_classes = train_label.shape[1]
+	self.img_shape = train_images[0].shape
+	train_size = train_images.shape[0]
 
-                            acc = total_acc_test / float(test_images.shape[0] / batch_size)
-                            ce = total_ce_test / float(test_images.shape[0] / batch_size)
-                            train_acc = total_acc_train / float(train_images.shape[0] / batch_size)
-                            print "[Batch " + str(batchIdx) + "]\tAccuracy[Test]: " + str(acc) + "\tCross Entropy[Test]: " + str(ce) +\
-                                  "\tAccuracy[Train]: " + str(train_acc)
-                            accuracies_test.append(acc)
-                            accuracies_train.append(train_acc)
-                            cross_entropy_test.append(ce)
-                    print "Epoch " + str(epoch) + " done!"
+	batch_size = 20
+	num_epochs = 10000
+	dropout_prob = .5
 
-            print "Save model..."
-            date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            with open(date_string + '_accuracies.pkl', 'w') as f:
-                pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
+	batch_runs = train_size / batch_size
+	print "Batch size: " + str(batch_size)
+	print "Number of iterations per epoch: " + str(batch_runs)
 
-        print "Plot accuracy..."
-        fig = plt.figure(figsize=(14,8))
-        plt.plot(accuracies_test, color='green', label='Accuracy on the test set')
-        plt.plot(accuracies_train, color='red', label='Accuracy on the training set')
-        plt.legend(loc="lower right")
-        fig.savefig(date_string + '_plot.png', dpi=400)
+	# create the graph
+	x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]), name="images")
+	y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes), name="labels")
+	keep_prob = tf.placeholder(tf.float32, name="dropout_prob")  # dropout (keep probability)
+	train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
+	# Add ops to save and restore all the variables.
+	saver = tf.train.Saver()
+	print "Graph successfully constructed! Start training..."
+	
+	accuracies_test = []
+	accuracies_train = []
+	cross_entropy_test = []
+	with tf.Session() as sess:
+	    sess.run(tf.initialize_all_variables())
+	    with tf.device('/gpu:1'):
+		for epoch in range(num_epochs):
+		    for batchIdx in range(batch_runs):
+			sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
+						      y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
+						      keep_prob: dropout_prob})
+			
+			if batchIdx % (batch_runs / 2) == 0:  # the denominator determines the printing frequency (here twice every epoch)
+			    total_acc_test = 0.
+			    total_ce_test = 0.
+			    total_acc_train = 0.
+			    for test_batch in xrange(test_images.shape[0] / batch_size):
+				total_acc_test += sess.run(accuracy_op,
+							   feed_dict={x: test_images[
+									 test_batch * batch_size:(test_batch + 1) * batch_size],
+								      y: test_label[
+									 test_batch * batch_size:(test_batch + 1) * batch_size],
+								      keep_prob: 1.})
+				total_ce_test += sess.run(ce_op,
+							  feed_dict={x: test_images[
+									test_batch * batch_size:(test_batch + 1) * batch_size],
+								     y: test_label[
+									test_batch * batch_size:(test_batch + 1) * batch_size],
+								     keep_prob: 1.})
+			    for train_batch in xrange(train_images.shape[0] / batch_size):
+				total_acc_train += sess.run(accuracy_op,
+							    feed_dict={x: train_images[
+									train_batch * batch_size:(train_batch + 1) * batch_size],
+								       y: train_label[
+									train_batch * batch_size:(train_batch + 1) * batch_size],
+								       keep_prob: 1.})
+
+			    acc = total_acc_test / float(test_images.shape[0] / batch_size)
+			    ce = total_ce_test / float(test_images.shape[0] / batch_size)
+			    train_acc = total_acc_train / float(train_images.shape[0] / batch_size)
+			    print "[Batch " + str(batchIdx) + "]\tAccuracy[Test]: " + str(acc) + "\tCross Entropy[Test]: " + str(ce) +\
+				  "\tAccuracy[Train]: " + str(train_acc)
+			    accuracies_test.append(acc)
+			    accuracies_train.append(train_acc)
+			    cross_entropy_test.append(ce)
+		    print "Epoch " + str(epoch) + " done!"
+	    
+	    # save everything to directory
+	    self.finish_after_training(saver, sess, accuracies_test, accuracies_train, cross_entropy_test)
+
+
+
+    def finish_after_training(self, saver, sess, accuracies_test, accuracies_train, cross_entropy_test):
+	
+	print "Create Directory..."
+	date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+	os.mkdir('training/' + date_string)
+
+	print "Save Model..."
+	save_path = 'training/' + date_string + '/'
+	path = saver.save(sess, save_path + 'model.ckpt')
+
+	# save accuracies during training
+	with open(save_path + 'accuracies.pkl', 'w') as f:
+	    pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
+		
+	print "Plot Accuracy..."
+	fig = plt.figure(figsize=(14,8))
+	plt.plot(accuracies_test, color='green', label='Accuracy on the test set')
+	plt.plot(accuracies_train, color='red', label='Accuracy on the training set')
+	plt.legend(loc="lower right")
+	fig.savefig(save_path + 'plot.png', dpi=400)
+
+
+
 
 print "Loading the data..."
 with open('train_data_gray_norm_aug.pkl', 'rb') as train_handle:
