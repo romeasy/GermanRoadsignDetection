@@ -83,12 +83,12 @@ class cNN:
                 biases.append(tf.Variable(tf.random_normal([self.architecture[layer][1]])))
             
             elif self.architecture[layer][0] == "out":
-            	assert layer == (len(architecture) - 1) # sanity check
+                assert layer == (len(architecture) - 1) # sanity check
                 last_output = self.architecture[layer-1][1]
                 weights.append(tf.Variable(tf.random_normal([last_output, self.architecture[layer][1]])))
                 biases.append(tf.Variable(tf.random_normal([self.architecture[layer][1]])))
             else:
-            	print "Unknown layer type! " + self.architecture[layer][0]
+                print "Unknown layer type! " + self.architecture[layer][0]
         return weights, biases
                 
     def weight_variable(self, shape):
@@ -105,21 +105,21 @@ class cNN:
     def max_pool_2x2(self, x, k=2):
         return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-	def construct_graph(self, images, labels, weights, biases, keep_prob):
-		last_output = images
-		for layer in xrange(len(self.architecture)):
-			local_weight = weights[layer]
-			local_bias = biases[layer]
-			if self.architecture[layer][0] == "conv":
-				convoluted = tf.nn.relu(self.conv2d(last_output, local_weights) + local_bias)
-				pooled = self.max_pool_2x2(convoluted, k=4) # FIXME: k arbitrary
-				current_output = pooled # for next layer
-			elif self.architecture[layer][0] == "dense":
-				dense_out = tf.nn.relu(tf.matmul(current_output, local_weight) + local_bias)
-			elif self.architecture[layer][0] == "out":
-				pass
-			else:
-				print "Unknown layer type! " + self.architecture[layer][0]
+    def construct_graph(self, images, labels, weights, biases, keep_prob):
+        last_output = images
+        for layer in xrange(len(self.architecture)):
+            local_weight = weights[layer]
+            local_bias = biases[layer]
+            if self.architecture[layer][0] == "conv":
+                convoluted = tf.nn.relu(self.conv2d(last_output, local_weight) + local_bias)
+                pooled = self.max_pool_2x2(convoluted, k=4) # FIXME: k arbitrary
+                current_output = pooled # for next layer
+            elif self.architecture[layer][0] == "dense":
+                dense_out = tf.nn.relu(tf.matmul(current_output, local_weight) + local_bias)
+            elif self.architecture[layer][0] == "out":
+                pass
+            else:
+                print "Unknown layer type! " + self.architecture[layer][0]
     """
     This function creates the graph for training and returns a tensorflow function object.
     This object can then be used to train the batches.
@@ -187,87 +187,87 @@ class cNN:
     def train_model(self, train_images, train_label, test_images, test_label):
         
         with tf.device('/gpu:0'):
-		    print train_images.shape
-		    assert(train_images.shape[0] == train_label.shape[0])
-		    
-		    # set some class variables before constructing the model
-		    self.n_classes = train_label.shape[1]
-		    self.img_shape = train_images[0].shape
-		    train_size = train_images.shape[0]
-		    batch_size = 20
-		    batch_runs = train_size / batch_size
-		    print "Batch size: " + str(batch_size)
-		    print "Number of iterations per epoch: " + str(batch_runs)
+            print train_images.shape
+            assert(train_images.shape[0] == train_label.shape[0])
+            
+            # set some class variables before constructing the model
+            self.n_classes = train_label.shape[1]
+            self.img_shape = train_images[0].shape
+            train_size = train_images.shape[0]
+            batch_size = 20
+            batch_runs = train_size / batch_size
+            print "Batch size: " + str(batch_size)
+            print "Number of iterations per epoch: " + str(batch_runs)
 
-		    # create the graph
-		    x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
-		    y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
-		    keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
-		    train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
-		    print "Graph successfully constructed! Start training..."
-		    
-		    accuracies_test = []
-		    accuracies_train = []
-		    cross_entropy_test = []
-		    with tf.Session() as sess:
-		        sess.run(tf.initialize_all_variables())
-		        for epoch in range(300):
-		            for batchIdx in range(batch_runs):
-		                sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
-		                                              y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
-		                                              keep_prob: 1.})
-		                
-		                if batchIdx % (batch_runs / 2) == 0:  # the denominator determines the printing frequency (here twice every epoch)
-		                    total_acc_test = 0.
-		                    total_ce_test = 0.
-		                    total_acc_train = 0.
-		                    for test_batch in xrange(test_images.shape[0] / batch_size):
-		                        total_acc_test += sess.run(accuracy_op,
-		                                                   feed_dict={x: test_images[
-		                                                                 test_batch * batch_size:(test_batch + 1) * batch_size],
-		                                                              y: test_label[
-		                                                                 test_batch * batch_size:(test_batch + 1) * batch_size],
-		                                                              keep_prob: 1.})
-		                        total_ce_test += sess.run(ce_op,
-		                                                  feed_dict={x: test_images[
-		                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
-		                                                             y: test_label[
-		                                                                test_batch * batch_size:(test_batch + 1) * batch_size],
-		                                                             keep_prob: 1.})
-		                    for train_batch in xrange(train_images.shape[0] / batch_size):
-		                        total_acc_train += sess.run(accuracy_op,
-		                                                    feed_dict={x: train_images[
-		                                                                train_batch * batch_size:(train_batch + 1) * batch_size],
-		                                                               y: train_label[
-		                                                                train_batch * batch_size:(train_batch + 1) * batch_size],
-		                                                               keep_prob: 1.})
+            # create the graph
+            x = tf.placeholder(tf.float32, shape=(batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]))
+            y = tf.placeholder(tf.float32, shape=(batch_size, self.n_classes))
+            keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
+            train_op, ce_op, accuracy_op = self.construct_model(x, y, keep_prob)
+            print "Graph successfully constructed! Start training..."
+            
+            accuracies_test = []
+            accuracies_train = []
+            cross_entropy_test = []
+            with tf.Session() as sess:
+                sess.run(tf.initialize_all_variables())
+                for epoch in range(300):
+                    for batchIdx in range(batch_runs):
+                        sess.run(train_op, feed_dict={x: train_images[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                                                      y: train_label[batchIdx*batch_size:(batchIdx+1)*batch_size],
+                                                      keep_prob: .5})
+                        
+                        if batchIdx % (batch_runs / 2) == 0:  # the denominator determines the printing frequency (here twice every epoch)
+                            total_acc_test = 0.
+                            total_ce_test = 0.
+                            total_acc_train = 0.
+                            for test_batch in xrange(test_images.shape[0] / batch_size):
+                                total_acc_test += sess.run(accuracy_op,
+                                                           feed_dict={x: test_images[
+                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                      y: test_label[
+                                                                         test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                      keep_prob: 1.})
+                                total_ce_test += sess.run(ce_op,
+                                                          feed_dict={x: test_images[
+                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                     y: test_label[
+                                                                        test_batch * batch_size:(test_batch + 1) * batch_size],
+                                                                     keep_prob: 1.})
+                            for train_batch in xrange(train_images.shape[0] / batch_size):
+                                total_acc_train += sess.run(accuracy_op,
+                                                            feed_dict={x: train_images[
+                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
+                                                                       y: train_label[
+                                                                        train_batch * batch_size:(train_batch + 1) * batch_size],
+                                                                       keep_prob: 1.})
 
-		                    acc = total_acc_test / float(test_images.shape[0] / batch_size)
-		                    ce = total_ce_test / float(test_images.shape[0] / batch_size)
-		                    train_acc = total_acc_train / float(train_images.shape[0] / batch_size)
-		                    print "[Batch " + str(batchIdx) + "]\tAccuracy[Test]: " + str(acc) + "\tCross Entropy[Test]: " + str(ce) +\
-		                          "\tAccuracy[Train]: " + str(train_acc)
-		                    accuracies_test.append(acc)
-		                    accuracies_train.append(train_acc)
-		                    cross_entropy_test.append(ce)
-		            print "Epoch " + str(epoch) + " done!"
+                            acc = total_acc_test / float(test_images.shape[0] / batch_size)
+                            ce = total_ce_test / float(test_images.shape[0] / batch_size)
+                            train_acc = total_acc_train / float(train_images.shape[0] / batch_size)
+                            print "[Batch " + str(batchIdx) + "]\tAccuracy[Test]: " + str(acc) + "\tCross Entropy[Test]: " + str(ce) +\
+                                  "\tAccuracy[Train]: " + str(train_acc)
+                            accuracies_test.append(acc)
+                            accuracies_train.append(train_acc)
+                            cross_entropy_test.append(ce)
+                    print "Epoch " + str(epoch) + " done!"
 
-		print "Save model..."
-		date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-		with open(date_string + '_accuracies.pkl', 'w') as f:
-			pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
-		
-		print "Plot accuracy..."
-		fig = plt.figure(figsize=(14,8))
-		plt.plot(accuracies_test, color='green', label='Accuracy on the test set')
-		plt.plot(accuracies_train, color='red', label='Accuracy on the training set')
-		plt.legend(loc="lower right")
-		fig.savefig(date_string + '_plot.png', dpi=400)
+            print "Save model..."
+            date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            with open(date_string + '_accuracies.pkl', 'w') as f:
+                pickle.dump((accuracies_test, accuracies_train, cross_entropy_test), f, pickle.HIGHEST_PROTOCOL)
+
+        print "Plot accuracy..."
+        fig = plt.figure(figsize=(14,8))
+        plt.plot(accuracies_test, color='green', label='Accuracy on the test set')
+        plt.plot(accuracies_train, color='red', label='Accuracy on the training set')
+        plt.legend(loc="lower right")
+        fig.savefig(date_string + '_plot.png', dpi=400)
 
 print "Loading the data..."
-with open('train_data_norm.pkl', 'rb') as train_handle:
+with open('train_data_gray_norm_aug.pkl', 'rb') as train_handle:
     train_set, train_labels = pickle.load(train_handle)
-with open('test_data_norm.pkl', 'rb') as test_handle:
+with open('test_data_gray_norm_aug.pkl', 'rb') as test_handle:
     test_set, test_labels = pickle.load(test_handle)
 print "Successfully loaded " + str(train_set.shape[0]) + " images!"
 
