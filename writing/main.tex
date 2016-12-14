@@ -46,7 +46,12 @@ Simply put, for a autonomous car to be able to react to such rapid changes in th
 Such a problem can be interpreted as a classical machine learning problem on images, in which a computer has to determine to which class an image belongs.
 The german road sign recognition challenge (GRSRC) tries to solve that problem by supplying a training dataset from which a computer can learn the structure of images belonging to each of the classes.
 
-Deep neural networks have become the state-of-the-art solution to extract meaning from computer images or videos \todo{cite}. They have been proven to achieve maximum accuracy when trying to classify such material into different classes while being able to 
+Deep neural networks have become the state-of-the-art solution to extract meaning from computer images or videos \todo{cite}. They have been proven to achieve maximum accuracy when trying to classify such material into different classes. However, as many techniques in machine learning, classical aNNs have a very large number of parameters when the input is high dimensional. This high number of parameters which have to be tuned during training, renders aNNs infeasible when the image is directly taken as input for a neural network.\\
+While there have been approaches to detect features in images and let the neural network learn on them, these preprocessing steps most often introduce a bias to the model which is generally not wanted. \todo{cite}\\
+Convolutional architectures overcome the \textit{curse of dimensionality} by reducing the number of parameters to tune drastically. Furthermore, they exploit properties that are always present in images and render the learning algorithm translation invariant.\\
+For these reasons, I chose to train a convolutional neural network on the GRSRC data set. In the challenge, there were different groups participating that used a similar approach and my architecture and preprocessing was heavily influenced by the work of Sermanet et al. \cite{sermanet2011traffic}
+
+I will firstly present the neural network training algorithm and it's convolutional counterpart. From there, I will show how the data set was preprocessing and how this resulted in better classification. Finally, I will evaluate the work and show how the trained network may aide in the automatic classification of German roadsigns only using a camera mounted in the vehicle.
 
 \section{Neural Networks \& Convolutional Neural Networks}
 Artificial neural networks have become the state-of-the-art machine learning system for applications in computer vision, natural language processing and robotics.\cite{visionANN, nlpANN, roboticsANN} They can be seen as an ensemble of different linear classifiers that are put together to solve a non-linear problem. While each of the individual classifiers only solves a linear sub-problem, the network is able to solve highly complex classification and regression tasks.\\
@@ -120,9 +125,19 @@ This approach solves the translation invariance issue because a filter will be a
 For applications in image recognition or computer vision, the interpretability is increased when using convolutional neural networks because the kernels have an interpretation that is known already. The kernels usually correspond to stereotypical mini-images like the cat or the face in figure \ref{fig:deeplearning}.
 
 \section{German Road Sign Detection}
-To train a 
+Training a convolutional neural network means to present to it all the images in a database for which the labels are known. In our case, there are 43 different classes of road signs. Because the parameters are optimized by gradient descent, it is often a good idea to present all of the training data multiple times until training has converged to a (local) minimum. Furthermore, the network requires all images to have the same dimensions which is not the default in the GTSRB data set.\\
+Also, it is often recommended to artificially increase the number of training examples by adding rotated and scaled versions of the images.
 
-\bibliography{bibliography.bib}
+\subsection{Preprocessing}
+In order to make the provided images useable for a cNN, I had to transform them to be of the same dimensions. I decided to scale all images to a square size of $32 \times 32$ pixels. The smallest images in the data set are as little as $15 \times 15$ pixels while the largest were of size $250 \times 250$.\\
+As a next step, I did a normalization over the luminosity of the images. Since some of the training examples are very dark or over-exposed, this step is crucial to achieving high performance.\\
+After the normalization step, all channels but the Y-channel (of a YUV image) were removed, resulting in a set of gray-scale images.\\
+Afterwards, the data set was \textit{blown up} by adding randomly transformed copies of randomly selected images to it. The data set originally contains around 35000 training examples and 4000 testing examples (with a ratio of $~9\%$ testing images).
+\subsection{Training \& Network Parameters}
+
+\section{Evaluation \& Outlook}
+
+\bibliography{bibliography}
 \bibliographystyle{plain}
 
 \end{document}
