@@ -14,7 +14,7 @@
 \usepackage{tikz}
 \usepackage[export]{adjustbox}
 \usepackage{cite}
-
+\usepackage{url}
 \usepackage{tocloft}
 
 \usepackage{todonotes}
@@ -132,11 +132,37 @@ Also, it is often recommended to artificially increase the number of training ex
 In order to make the provided images useable for a cNN, I had to transform them to be of the same dimensions. I decided to scale all images to a square size of $32 \times 32$ pixels. The smallest images in the data set are as little as $15 \times 15$ pixels while the largest were of size $250 \times 250$.\\
 As a next step, I did a normalization over the luminosity of the images. Since some of the training examples are very dark or over-exposed, this step is crucial to achieving high performance.\\
 After the normalization step, all channels but the Y-channel (of a YUV image) were removed, resulting in a set of gray-scale images.\\
-Afterwards, the data set was \textit{blown up} by adding randomly transformed copies of randomly selected images to it. The data set originally contains around 35000 training examples and 4000 testing examples (with a ratio of $~9\%$ testing images).
+Afterwards, the data set was \textit{blown up} by adding randomly transformed copies of randomly selected images to it. The data set originally contains around 35000 training examples and 4000 testing examples (with a ratio of $~9\%$ testing images). By inflating the data with artificially transformed images, the final data set contained 100,000 training examples while the test set was not modified.\\
+From the resulting training and test set, a matrix representation was derived and stored to make generic loading of differently preprocessed data sets possible. The preprocessing step is also memory intensive so that it might be better to perform these calculations on a different server than training.
+
 \subsection{Training \& Network Parameters}
+The data as described above can now be used for training a deep convolutional neural network. As shown by LeCun et al. in \cite{cnnOriginal}, two convolution stages are often more expressive than just a single one as the second convolutional layer learns more sophisticated features from the data. This is due to the fact that the second layer only sees the data represented by the first layer.\\
+For training, I used the \textit{tensorflow} framework \cite{abadi2015tensorflow} which allows to formulate a computational graph which is then heavily optimized by the internal tensorflow compiler. Furthermore, the framework allows for execution of most of the instructions in a computational graph on GPUs. Graphics processing units are known to accelerate computations by massively parallelizing them and especially with convolutions, they can be much faster than their CPU optimized equivalents \cite{cudnn}. Another advantage of tensorflow and similar frameworks, such as \textit{theano}, \textit{torch} or \textit{keras} is the automated computation of derivatives. In such a framework, the parameters can be adapted using one of many different optimizers. I chose the \textit{adam} optimizer \cite{overviewGD} as it is one of the most effective gradient descent optimizers that includes many different ideas, such as \textit{momentum}, \textit{nesterov} and many more.
+\begin{figure}[h!]
+	\includegraphics[width=\textwidth]{cnn_architecture.png}
+	\centering
+	\caption[Architecture]{Architecture of the cNN to learn german road signs. The network contains of two convolution layers that are max-pooled afterwards. The resulting shrinked layer is then flattened and densely connected to the output layer. This layer also uses \textit{dropout} to improve the robustness of predictions.}
+	\label{fig:architecture}
+\end{figure}
+
+There are many \textit{hyper parameters} to cNNs, such as the learning rate or kernel sizes to use. With most parameters, I closely sticked with the paper of Sermanet et al. \cite{sermanet2011traffic} but with some not.\\
+The learning rate I used is much smaller than in the paper which might be related to the choice of optimization algorithm. The adam optimizer should adapt the learning rate in a procedure similar to \textit{r-prop} but a very small learning rate in the beginning can be crucial to get some good first feature detectors. Because of the computational complexity, I decided not to search automatically for good hyper parameters as suggested by \todo{cite}. The batch size was also modified since there is simply not enough memory on the graphics card used to process more than around 20 images in one batch. Larger batch sizes usually result in more robust learning while \textit{online learning} (batch size of one) makes the gradient descent somewhat "jumpy".\\
+Kernel sizes were adapted from \cite{cnnOriginal} to a size of $5 \times 5$ which is the de-facto standard kernel size for image classification. After each convolution layer the result is max pooled to reduce the size of the layer. Pooling adds some small translation invariance to the algorithm but mainly results in a pyramidal structure of the network. That effects makes sure that layers further up learn much more high-level representations of the data than the lower layers (cf. figure \ref{fig:deeplearning}).
+
+After convolutions took place, the remaining small images ($4 \times 4$) are flattened and transformed by a \textit{ReLu} layer. Each neuron in the hidden layer of that sub-network is connected to each pixel of the last convolution stage. It receives a weighted sum of all of these pixels as input and transforms that using the non-linear \textit{rectified linear activation function}. In my network, there are 64 hidden ReLu units.
+The dense layer is then connected to the output layer which consists of 43 units. The result is encoded as one-hot-representation, meaning that each output unit represents one of the 43 classes. The classification result is obtained by using the argmax function over the 43 classes, thus choosing the class for which the network assigns the highest probability.\\
+The labels are equivalently also encoded as a 43-dimensional vector with only zeros except for the class to which the training image belongs.
 
 \section{Evaluation \& Outlook}
-
+The convolutional neural network achieves an overall accuracy of $~95.7 \%$ on the test set. That data was never shown to the network and was subtracted from it before blowing up the training set.\\
+\begin{figure}[h!]
+	\includegraphics[width=\textwidth]{accuracy.png}
+	\centering
+	\caption[Accuracy]{The accuracy over training and test set. From the training set, there was a random subsample chosen to reduce computations. As expected, the test error is a little higher than the training error.\\
+The plot suggests that after 10,000 epochs the learning was not yet finished but due to computational limitations, longer training was not possible.}
+	\label{fig:architecture}
+\end{figure}
+\newpage
 \bibliography{bibliography}
 \bibliographystyle{plain}
 
