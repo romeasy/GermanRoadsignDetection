@@ -199,7 +199,7 @@ class cNN:
 	x = tf.placeholder(tf.float32, shape=(self.batch_size, self.img_shape[0], self.img_shape[1], self.img_shape[2]), name="images")
 	y = tf.placeholder(tf.float32, shape=(self.batch_size, self.n_classes), name="labels")
 	keep_prob = tf.placeholder(tf.float32, name="dropout_prob")  # dropout (keep probability)
-	train_op, ce_op, accuracy_op, prediction_op = self.construct_model(x, y, keep_prob)
+	train_op, ce_op, prediction_op, accuracy_op = self.construct_model(x, y, keep_prob)
 	# Add ops to save and restore all the variables.
 	saver = tf.train.Saver()
 	print "Graph successfully constructed! Start training..."
