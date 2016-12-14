@@ -71,7 +71,7 @@ class cNN:
 
     def sanity_check(self, image_shape, label_shape):
 	passed = True
-	if self.img_shape != image_shape:
+	if self.img_shape != image_shape[1:]:
 	    print "ERROR! Image shape does not correspond to predefined!"
 	    passed = False
 	
