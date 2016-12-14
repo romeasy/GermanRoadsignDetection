@@ -58,7 +58,7 @@ class cNN:
 	# gradient descent parameters
 	self.learning_rate = 0.00001
 	self.batch_size = 20
-	self.num_epochs = 10000
+	self.num_epochs = 50000
 	self.dropout_prob = .5
 	
 	# some network properties
@@ -289,5 +289,5 @@ if __name__ == "__main__":
     print "Successfully loaded " + str(train_set.shape[0]) + " images!"
 
     classifier = cNN()
-    classifier.train_model(train_set, train_labels, test_set, test_labels, kernel_shape, learning_rate)
+    classifier.train_model(train_set, train_labels, test_set, test_labels)
     print "Done with training!"
