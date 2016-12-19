@@ -46,8 +46,8 @@ Simply put, for a autonomous car to be able to react to such rapid changes in th
 Such a problem can be interpreted as a classical machine learning problem on images, in which a computer has to determine to which class an image belongs.
 The german road sign recognition challenge (GRSRC) tries to solve that problem by supplying a training dataset from which a computer can learn the structure of images belonging to each of the classes.
 
-Deep neural networks have become the state-of-the-art solution to extract meaning from computer images or videos \todo{cite}. They have been proven to achieve maximum accuracy when trying to classify such material into different classes. However, as many techniques in machine learning, classical aNNs have a very large number of parameters when the input is high dimensional. This high number of parameters which have to be tuned during training, renders aNNs infeasible when the image is directly taken as input for a neural network.\\
-While there have been approaches to detect features in images and let the neural network learn on them, these preprocessing steps most often introduce a bias to the model which is generally not wanted. \todo{cite}\\
+Deep neural networks have become the state-of-the-art solution to extract meaning from computer images or videos \cite{lecunConvADF}. They have been proven to achieve maximum accuracy when trying to classify such material into different classes. However, as many techniques in machine learning, classical aNNs have a very large number of parameters when the input is high dimensional. This high number of parameters which have to be tuned during training, renders aNNs infeasible when the image is directly taken as input for a neural network.\\
+While there have been approaches to detect features in images and let the neural network learn on them, these preprocessing steps most often introduce a bias to the model which is generally not wanted \cite{shamir2010pattern}.\\
 Convolutional architectures overcome the \textit{curse of dimensionality} by reducing the number of parameters to tune drastically. Furthermore, they exploit properties that are always present in images and render the learning algorithm translation invariant.\\
 For these reasons, I chose to train a convolutional neural network on the GRSRC data set. In the challenge, there were different groups participating that used a similar approach and my architecture and preprocessing was heavily influenced by the work of Sermanet et al. \cite{sermanet2011traffic}
 
@@ -146,7 +146,7 @@ For training, I used the \textit{tensorflow} framework \cite{abadi2015tensorflow
 \end{figure}
 
 There are many \textit{hyper parameters} to cNNs, such as the learning rate or kernel sizes to use. With most parameters, I closely sticked with the paper of Sermanet et al. \cite{sermanet2011traffic} but with some not.\\
-The learning rate I used is much smaller than in the paper which might be related to the choice of optimization algorithm. The adam optimizer should adapt the learning rate in a procedure similar to \textit{r-prop} but a very small learning rate in the beginning can be crucial to get some good first feature detectors. Because of the computational complexity, I decided not to search automatically for good hyper parameters as suggested by \todo{cite}. The batch size was also modified since there is simply not enough memory on the graphics card used to process more than around 20 images in one batch. Larger batch sizes usually result in more robust learning while \textit{online learning} (batch size of one) makes the gradient descent somewhat "jumpy".\\
+The learning rate I used is much smaller than in the paper which might be related to the choice of optimization algorithm. The adam optimizer should adapt the learning rate in a procedure similar to \textit{r-prop} but a very small learning rate in the beginning can be crucial to get some good first feature detectors. Because of the computational complexity, I decided not to search automatically for good hyper parameters as suggested by \cite{gridsearchHyperparams}. The batch size was also modified since there is simply not enough memory on the graphics card used to process more than around 20 images in one batch. Larger batch sizes usually result in more robust learning while \textit{online learning} (batch size of one) makes the gradient descent somewhat "jumpy".\\
 Kernel sizes were adapted from \cite{cnnOriginal} to a size of $5 \times 5$ which is the de-facto standard kernel size for image classification. After each convolution layer the result is max pooled to reduce the size of the layer. Pooling adds some small translation invariance to the algorithm but mainly results in a pyramidal structure of the network. That effects makes sure that layers further up learn much more high-level representations of the data than the lower layers (cf. figure \ref{fig:deeplearning}).
 
 After convolutions took place, the remaining small images ($4 \times 4$) are flattened and transformed by a \textit{ReLu} layer. Each neuron in the hidden layer of that sub-network is connected to each pixel of the last convolution stage. It receives a weighted sum of all of these pixels as input and transforms that using the non-linear \textit{rectified linear activation function}. In my network, there are 64 hidden ReLu units.
@@ -169,11 +169,24 @@ The overall accuracy is the measure of how well the algorithm classifies images 
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{roc_multi.png}
 	\centering
-	\caption[ROC Curve]{ROC curve for a multiclass settings. The two curves represent two interpolated versions of a mean ROC curve over all classes.}
-	\label{fig:roc}
+	\caption[Average ROC Curve]{ROC curve for a multiclass settings. The two curves represent two interpolated versions of a mean ROC curve over all classes.}
+	\label{fig:roc_avg}
 \end{figure}
 
-In figure \ref{fig:roc} we see an interpolated ROC curve over all classes. Because of the 
+In figure \ref{fig:roc_avg} we see an interpolated ROC curve over all classes. A ROC curve measures the true positive rate against the false positive rate and can provide information on how many errors one has to tolerate in order to have a desired specificity. With a perfect classification, the curve would be in the upper left corner.\\
+In our case, however, we can conclude that we can get around 90-95 \% true positives without any false positives over all classes.
+\begin{figure}[h!]
+	\includegraphics[width=\textwidth]{roc_imperfect.png}
+	\centering
+	\caption[ROC Curve for imperfect classes]{ROC curve showing only those classes that did not achieve perfect classification on the test set. While most of these classes range between $97 - 99 \%$ there are four classes that the algorithm is not able to classify at all and one class where it is merely better than random (with an AUC value of $68\%$).}
+	\label{fig:roc_imp}
+\end{figure}
+
+On the other hand, when we look at the specific classes this changes a lot. As figure \ref{fig:roc_imp} suggests, there seems to be many classes that the algorithm can classify almost perfectly while it has problem with a few of the road signs. In these rare cases, the network only achieves random classification.\\
+It is not yet clear why this might be the case but future versions of the cnn should pay attention to these classes as they are indicated here to be hardest to classify.
+
+While the convolutional neural network presented in this paper is clearly able to generally classify german road signs very well, there is still much work to be done. First of all, the camera of an autonomous car only extracts whole images from which the area in which a road sign might be positioned has to be extracted. This can be done using the depth sensors or colors for finding possible candidates. Furthermore, we only looked at images that do contain road signs. In order to make the application practical in the real world, the algorithm should be able to reject all images that do not contain any road sign, such that the extraction algorithm may have a high false positive rate.\\
+And finally, autonomous driving is a very dangerous field. While classification results of 95\% is very high, much attention should be paid to what happens when road signs are falsely identified. Human classification for the data set at hand was around 98.8\%, but in a typical driving situation there are many images from which the camera can extract the correct road sign. So careful modeling of the detected road signs is a vital part for an autonomous car to drive safely.
 \newpage
 \bibliography{bibliography}
 \bibliographystyle{plain}
