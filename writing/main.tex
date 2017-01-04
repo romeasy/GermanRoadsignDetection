@@ -13,7 +13,7 @@
 %\usepackage{algpseudocode}
 \usepackage{tikz}
 \usepackage[export]{adjustbox}
-\usepackage{cite}
+%\usepackage{cite}
 \usepackage{url}
 \usepackage{tocloft}
 
@@ -73,7 +73,7 @@ The backpropagation algorithm tries to answer the question, in how far each of t
 E = \frac{1}{2} \sum_{i=1}^k (y_i - t_i)^2
 \end{equation*}
 This error is then split up between all neurons in a top-down fashion. The key principle is here to calculate the error's partial derivatives with respect to the weights that connect that two neurons. We start by calculating the derivative for the weights connecting the output layer with the second-last layer. These can be calculated easily with the \textit{chain rule}. From that point, it becomes possible to calculate the derivatives for the weights connecting the second-last with the third-last layer and so on. Finally, we arrive at the input layer and the backpropagation algorithm terminates for the given input. When we repeat this procedure for all data points, the network will slowly start to learn to minimize the error.\\
-We will assume that the neural network at hand uses the \textit{sigmoid activation function} which is given by:
+Traditionally, neural networks were trained using the \textit{sigmoid activation function} which is given by:
 \begin{equation*}
 sig(x) = \frac{1}{1 + e^{-x}}
 \end{equation*}
@@ -97,7 +97,7 @@ where $\delta_j^k$ is given by:
 	f'(h_j^k)(\sum_{i \in incoming} w_{ji} \delta_i^{(k+1)}, & \text{for inner layers}.
 \end{cases}
 \end{equation*}
-\begin{figure}[h!]
+\begin{figure}[h]
 \includegraphics[width=0.9\textwidth]{ann_intuition.png}
 \centering
 \caption[Hierarchical Learning in aNNs]{Example of how a neural network can solve the XOR problem. The first layer of the network only finds good data representations that serve as input for the next layer. There, the problem is suddenly linearly separable, and the problem as a whole can be solved.}
@@ -106,7 +106,26 @@ where $\delta_j^k$ is given by:
 The backpropagation algorithm has the tendency to find useful representations of the data in the first layers, as is depicted in figure \ref{fig:annIntuition}. This property yields in a high interpretability of neural networks despite their complexity.
 
 However, neural networks have also some disadvantages. Because of the large amounts of parameters, the classical fully connected feed forward network requires huge amounts of training data for successful learning. Overfitting can occur easily and does so frequently. Furthermore, there is no guarantee that the solution found by the network is optimal in any way.
-And finally, applying these kinds of networks to images is usually not feasible due to the huge amount of parameters and the very structure of an image. When there is the same pattern of pixels somewhere in the image, we usually want it to be recognized as such, no matter where the pattern is located in the image. But imagine a neural network that is trained to see some feature (an apple, for instance) in the upper left corner. The network would be unable to recognize the very same apple located in the lower right corner of the image when this image was not part of the training set.
+
+Also, neural networks have suffered from the \textit{vanishing gradient problem}. This problem comes from the nature of the sigmoid activation function which "squeezes" the output of any layer to be between zero and one. Respectively, the backpropagation algorithm only updates the parameters in the upper layers because the whole error "is used up" by those, while leaving the most important first layers untouched \cite{hochreiter1991}.
+\begin{wrapfigure}[14]{r}{0.52\textwidth}
+	\vspace{-1pt}
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{relu.jpeg}
+	\end{center}
+	\vspace{-1pt}
+	\caption{The rectified linear activation function}
+	\vspace{-1pt}
+	\label{fig:relu}
+\end{wrapfigure}
+Recent advances in the field promoted the \textit{rectified linear unit} (ReLU) as activation function of choice in most applications \cite{hahnloser2000digital}. This function is given by:
+\begin{equation*}
+f(x) = max(0, x).
+\end{equation*}
+The ReLU activation assigns large derivatives when the error is large and thus gets rid of the vanishing gradient problem.
+
+Finally, an additional drawback of traditional feed-forward neural networks lies in the application to images. Because of the large number of dimensions when applied directly on the pixels (one dimension per pixel), it is usually not feasible to train neural networks on large images without running in the above problem of overfitting.\\
+And also, neural networks are not translation invariant. That is, when there is the same pattern of pixels somewhere in the image, we usually want it to be recognized as such, no matter where the pattern is located in the image. But imagine a neural network that is trained to see some feature (an apple, for instance) in the upper left corner. The network would be unable to recognize the very same apple located in the lower right corner of the image when this image was not part of the training set.
 
 To overcome these problems, LeCun et al. proposed the convolutional neural network in \cite{cnnOriginal}, which resolves most of the problems in the field of computer vision applications.
 
@@ -125,14 +144,15 @@ This approach solves the translation invariance issue because a filter will be a
 For applications in image recognition or computer vision, the interpretability is increased when using convolutional neural networks because the kernels have an interpretation that is known already. The kernels usually correspond to stereotypical mini-images like the cat or the face in figure \ref{fig:deeplearning}.
 
 \section{German Road Sign Detection}
-Training a convolutional neural network means to present to it all the images in a database for which the labels are known. In our case, there are 43 different classes of road signs. Because the parameters are optimized by gradient descent, it is often a good idea to present all of the training data multiple times until training has converged to a (local) minimum. Furthermore, the network requires all images to have the same dimensions which is not the default in the GTSRB data set.\\
+Training a convolutional neural network means to present to it all the images in a database for which the labels are known. In our case, there are 43 different classes of road signs with the images being of different sizes and scales. The road sign in an image can be anywhere in the image and partly covered. There are 39252 images in total provided by the GTSRB (German Traffic Sign Recognition Benchmark).\\
+Because the parameters are optimized by gradient descent, it is often a good idea to present all of the training data multiple times until training has converged to a (local) minimum. Furthermore, the network requires all images to have the same dimensions which is not the default in the GTSRB data set.\\
 Also, it is often recommended to artificially increase the number of training examples by adding rotated and scaled versions of the images.
 
 \subsection{Preprocessing}
 In order to make the provided images useable for a cNN, I had to transform them to be of the same dimensions. I decided to scale all images to a square size of $32 \times 32$ pixels. The smallest images in the data set are as little as $15 \times 15$ pixels while the largest were of size $250 \times 250$.\\
 As a next step, I did a normalization over the luminosity of the images. Since some of the training examples are very dark or over-exposed, this step is crucial to achieving high performance.\\
 After the normalization step, all channels but the Y-channel (of a YUV image) were removed, resulting in a set of gray-scale images.\\
-Afterwards, the data set was \textit{blown up} by adding randomly transformed copies of randomly selected images to it. The data set originally contains around 35000 training examples and 4000 testing examples (with a ratio of $~9\%$ testing images). By inflating the data with artificially transformed images, the final data set contained 100,000 training examples while the test set was not modified.\\
+Afterwards, the data set was \textit{blown up} by adding randomly transformed copies of randomly selected images to it. First, I split the data set into training and test sets. The data sets contain around 35000 examples for training and 4000 for testing (with a ratio of $~9\%$ testing images). By inflating the data with artificially transformed images, the final data set contained 100,000 training examples while the test set was not modified.\\
 From the resulting training and test set, a matrix representation was derived and stored to make generic loading of differently preprocessed data sets possible. The preprocessing step is also memory intensive so that it might be better to perform these calculations on a different server than training.
 
 \subsection{Training \& Network Parameters}
