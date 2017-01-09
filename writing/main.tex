@@ -174,15 +174,15 @@ The dense layer is then connected to the output layer which consists of 43 units
 The labels are equivalently also encoded as a 43-dimensional vector with only zeros except for the class to which the training image belongs.
 
 \section{Evaluation \& Outlook}
-The convolutional neural network achieves an overall accuracy of $~95.7 \%$ on the test set. That data was never shown to the network and was subtracted from it before blowing up the training set.\\
+The convolutional neural network achieves an overall accuracy of $~99 \%$ on the test set. That data was never shown to the network and was subtracted from it before blowing up the training set.\\
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{accuracy.png}
 	\centering
-	\caption[Accuracy]{The accuracy over training and test set. From the training set, there was a random subsample chosen to reduce computations. As expected, the test error is a little higher than the training error.\\
-The plot suggests that after 10,000 epochs the learning was not yet finished but due to computational limitations, longer training was not possible.}
+	\caption[Accuracy]{The accuracy over training and test set. On the x-axis, the number of epochs is shown while the y-axis depicts the accuracy on training and test set. From the training set, there was a random subsample chosen to reduce computations. As expected, the test error is a little higher than the training error but the two do not diverge.
+}
 	\label{fig:accuracy}
 \end{figure}
-From the plot in figure \ref{fig:accuracy} we can clearly see that the training is successful. Not only does the accuracy start at random in the first epoch (which would be $\frac{1}{43} = ~2 \%$) but it increases rapidly in the beginning and stagnates afterwards. From there, the training does not change much for a long time until suddenly there is again an increase in the accuracy. One possible explanation for that behavior might be a local minimum of which the gradient descent algorithm can only escape through a random configuration or a long "ridge" in which the gradient is almost zero but not quite.\\
+From the plot in figure \ref{fig:accuracy} we can clearly see that the training is successful. Not only does the accuracy start at random in the first epoch (which would be $\frac{1}{43} = 2 \%$) but it increases rapidly in the beginning and stagnates afterwards. From there, the training does not change much for a long time until suddenly there is again an increase in the accuracy. One possible explanation for that behavior might be a local minimum of which the gradient descent algorithm can only escape through a random configuration or a long "ridge" in which the gradient is almost zero but not quite.\\
 However, the classification accuracy increases during training and we cannot yet observe overfitting. That indicates that a longer training would be promising as there can still be improvements until the time when overfitting occurs in the model.
 
 The overall accuracy is the measure of how well the algorithm classifies images into their respective class but it does not measure the ratio of true positives to false positives. This is exactly what a \textit{receiver operator characteristics} (ROC) curve tells us and the measure is much more precise when dealing with unbalanced training and test sets.
