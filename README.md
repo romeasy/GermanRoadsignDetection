@@ -14,16 +14,16 @@ Conducting training of your own using the convolutional neural network from our 
 
 Installation can be done easily with pip by
 ```bash
-pip install tensorflow matplitlib ipython
+pip install tensorflow matplotlib ipython
 ```
 and ipython/jupyter notebook can be installed using the following guide http://jupyter.org/.
 
 ## Use the network
-This repository includes several successfull training procedures which yield about 92% accuracy.
+This repository includes several successfull training procedures which yield about 99% accuracy.
 If you are interested in using them, have a look at the postprocessing script.
 
 ## Conduct training
 If you want to conduct training yourself or change the existing code, you are welcome to do so. Preprocessing contains code to
-read the images from the official GTSRB. It also converts all images to a proper training and test set in which all images have
-the same size, the same color layout (grayscale vs YUV) and are rotated and scaled randomly to increase the training data.
+read the images from the official GTSRB website. It also converts all images to a proper training and test set in which all images have
+the same size, the same color layout (grayscale or YUV) and are rotated and scaled randomly to increase the training data size.
 Several different training and test sets can be easily generated this way.
