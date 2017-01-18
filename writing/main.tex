@@ -173,7 +173,7 @@ After convolutions took place, the remaining small images ($4 \times 4$) are fla
 The dense layer is then connected to the output layer which consists of 43 units. The result is encoded as one-hot-representation, meaning that each output unit represents one of the 43 classes. The classification result is obtained by using the argmax function over the 43 classes, thus choosing the class for which the network assigns the highest probability.\\
 The labels are equivalently also encoded as a 43-dimensional vector with only zeros except for the class to which the training image belongs.
 
-\section{Evaluation \& Outlook}
+\section{Results}
 The convolutional neural network achieves an overall accuracy of $~99 \%$ on the test set. That data was never shown to the network and was subtracted from it before blowing up the training set. The human performance for the task at hand lies at around 98.8\% which is beaten slightly by our algorithm \cite{stallkamp2012man}.\\
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{accuracy.png}
@@ -183,18 +183,14 @@ The convolutional neural network achieves an overall accuracy of $~99 \%$ on the
 	\label{fig:accuracy}
 \end{figure}
 From the plot in figure \ref{fig:accuracy} we can clearly see that the training is successful. Not only does the accuracy start at random in the first epoch (which would be $\frac{1}{43} = 2 \%$) but it increases rapidly in the beginning. Multiple phases of long stagnation are often followed by a sudden rise in accuracy, making it hard to determine a stopping criterion. The stagnation can be due to a local minimum in the objective function from which the network can only escape with special "lucky" combination of batch and gradient momentum.\\
-However, the classification accuracy increases during training and we cannot observe any overfitting. 
-
-The overall accuracy is the measure of how well the algorithm classifies images into their respective class but it does not measure the ratio of true positives to false positives and thus gives no explanation on how many false positives we can expect to be on unknown data. However, such measures are extremely important when in an autonomous driving situation. This is exactly what a \textit{receiver operator characteristics} (ROC) curve tells us and the measure is much more precise when dealing with unbalanced training and test sets.
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{roc_multi.png}
 	\centering
 	\caption[Average ROC Curve]{ROC curve for a multiclass settings. The two curves represent two interpolated versions of a mean ROC curve over all classes.}
 	\label{fig:roc_avg}
 \end{figure}
-
-In figure \ref{fig:roc_avg} we see an interpolated ROC curve over all classes. A ROC curve measures the true positive rate against the false positive rate and can provide information on how many errors one has to tolerate in order to have a desired specificity. With a perfect classification, the curve would be in the upper left corner.\\
-In the current scenario, we are very close to that perfect classification, depending on the way to average the different ROC curves. We can thus expect a true positive rate of 98 \% when tolerating no false positives, which is very good.
+However, the classification accuracy increases during training and we cannot observe any overfitting.
+The overall accuracy is the measure of how well the algorithm classifies images into their respective class but it does not measure the ratio of true positives to false positives and thus gives no explanation on how many false positives we can expect to be on unknown data. However, such measures are extremely important when in an autonomous driving situation. This is exactly what a \textit{receiver operator characteristics} (ROC) curve tells us and the measure is much more precise when dealing with unbalanced training and test sets.
 \begin{figure}[h!]
 	\includegraphics[width=\textwidth]{roc_imperfect.png}
 	\centering
@@ -202,6 +198,8 @@ In the current scenario, we are very close to that perfect classification, depen
 	\label{fig:roc_imp}
 \end{figure}
 
+In figure \ref{fig:roc_avg} we see an interpolated ROC curve over all classes. A ROC curve measures the true positive rate against the false positive rate and can provide information on how many errors one has to tolerate in order to have a desired specificity. With a perfect classification, the curve would be in the upper left corner.\\
+In the current scenario, we are very close to that perfect classification, depending on the way to average the different ROC curves. We can thus expect a true positive rate of 98 \% when tolerating no false positives, which is very good.\\
 On the other hand, when we look at the specific classes this changes a lot. As figure \ref{fig:roc_imp} suggests, there seems to be three classes that the algorithm can classify almost perfectly while it has problem with a two kinds of the road signs. In these rare cases, the network only achieves random classification or is only slightly better.\\
 It is not yet clear why this might be the case but future versions of the algorithm should pay attention to these classes as they are indicated here to be hardest to classify.\\
 \begin{figure}[h!]
@@ -212,8 +210,10 @@ It is not yet clear why this might be the case but future versions of the algori
 \end{figure}
 Figure \ref{fig:imperfect_images} shows some examples of training images where the algorithm did not achieve 100\% accuracy.
 
+\section{Discussion \& Outlook}
 While the convolutional neural network presented in this paper is clearly able to generally classify german road signs very well, there is still much work to be done. First of all, the camera of an autonomous car only extracts whole images from which the area in which a road sign might be positioned has to be extracted. This can be done using the depth sensors or colors for finding possible candidates. Furthermore, we only looked at images that do contain road signs. In order to make the application practical in the real world, the algorithm should be able to reject all images that do not contain any road sign, such that the extraction algorithm may have a high false positive rate.\\
 And finally, autonomous driving is a very dangerous field. While classification results of 99\% is very high, much attention should be paid to the classes that only achieved sub-optimal accuracy and AUC values. Human classification for the data set at hand was around 98.8\%, but in a typical driving situation there are many images from which the camera can extract the correct road sign. So careful modeling of the detected road signs is a vital part for an autonomous car to drive safely.
+
 \newpage
 \bibliography{bibliography}
 \bibliographystyle{plain}
