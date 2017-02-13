@@ -209,7 +209,7 @@ class cNN:
 	cross_entropy_test = []
 	with tf.Session() as sess:
 	    sess.run(tf.initialize_all_variables())
-	    with tf.device('/gpu:1'):
+	    with tf.device('/gpu:0'):
 		for epoch in range(self.num_epochs):
 		    for batchIdx in range(batch_runs):
 			sess.run(train_op, feed_dict={x: train_images[batchIdx*self.batch_size:(batchIdx+1)*self.batch_size],
@@ -254,8 +254,6 @@ class cNN:
 	    # save everything to directory
 	    self.finish_after_training(saver, sess, accuracies_test, accuracies_train, cross_entropy_test)
 
-    def evaluate_model(self, test_data):
-	pass
 
     def finish_after_training(self, saver, sess, accuracies_test, accuracies_train, cross_entropy_test):
 	
