@@ -1,9 +1,6 @@
-# cnn
+# German Roadsign Detection
 A convolutional Neural Network to detect german road signs in images of different sizes.
-The networks layout is similar to the one described in 
-The neural network features the following methods:
-* Usage of an advanced optimizer (ADAM algorithm for gradient descent)
-* Convolutions to speed up training
+The networks layout is similar to the one described [here](http://yann.lecun.com/exdb/publis/pdf/sermanet-ijcnn-11.pdf).
 
 ## Installation
 Conducting training of your own using the convolutional neural network from our repository requires different software:
